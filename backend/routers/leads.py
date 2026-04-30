@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import pandas as pd
 import io
+from io import StringIO, BytesIO
 from sqlalchemy import delete, func, select
 
 from backend.database import get_db
 from backend.schemas import LeadListResponse, UploadResponse, LeadRead
-from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id
+from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id, get_all_leads_filtered
 from backend.models import Lead
 
 router = APIRouter()
@@ -84,6 +86,95 @@ async def get_stats_summary(db: AsyncSession = Depends(get_db)):
         "distinct_sources": distinct_sources,
         "distinct_cities": distinct_cities
     }
+
+@router.get("/export/csv")
+async def export_leads_csv(
+    source: Optional[str] = None,
+    city: Optional[str] = None,
+    course_interest: Optional[str] = None,
+    converted: Optional[int] = None,
+    current_stage: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    filters = {
+        "source": source,
+        "city": city,
+        "course_interest": course_interest,
+        "converted": converted,
+        "current_stage": current_stage,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+    
+    leads = await get_all_leads_filtered(db, filters)
+    
+    # Convert leads to list of dicts for pandas
+    leads_data = []
+    for lead in leads:
+        lead_dict = lead.__dict__.copy()
+        if "_sa_instance_state" in lead_dict:
+            del lead_dict["_sa_instance_state"]
+        leads_data.append(lead_dict)
+        
+    df = pd.DataFrame(leads_data)
+    
+    output = StringIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=leads_export.csv"
+        }
+    )
+
+@router.get("/export/excel")
+async def export_leads_excel(
+    source: Optional[str] = None,
+    city: Optional[str] = None,
+    course_interest: Optional[str] = None,
+    converted: Optional[int] = None,
+    current_stage: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    filters = {
+        "source": source,
+        "city": city,
+        "course_interest": course_interest,
+        "converted": converted,
+        "current_stage": current_stage,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+    
+    leads = await get_all_leads_filtered(db, filters)
+    
+    leads_data = []
+    for lead in leads:
+        lead_dict = lead.__dict__.copy()
+        if "_sa_instance_state" in lead_dict:
+            del lead_dict["_sa_instance_state"]
+        leads_data.append(lead_dict)
+        
+    df = pd.DataFrame(leads_data)
+    
+    output = BytesIO()
+    df.to_excel(output, index=False, sheet_name="Leads")
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=leads_export.xlsx"
+        }
+    )
 
 @router.get("/{lead_id}", response_model=LeadRead)
 async def get_lead_by_id_endpoint(lead_id: str, db: AsyncSession = Depends(get_db)):

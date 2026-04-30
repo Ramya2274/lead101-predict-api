@@ -81,3 +81,26 @@ async def get_lead_by_id(db: AsyncSession, lead_id: str):
     query = select(Lead).where(Lead.lead_id == lead_id)
     result = await db.execute(query)
     return result.scalars().first()
+
+async def get_all_leads_filtered(db: AsyncSession, filters: dict):
+    """Fetch all leads matching filters (no pagination) for export."""
+    query = select(Lead)
+
+    if filters.get("source"):
+        query = query.where(Lead.source == filters["source"])
+    if filters.get("city"):
+        query = query.where(Lead.city == filters["city"])
+    if filters.get("course_interest"):
+        query = query.where(Lead.course_interest == filters["course_interest"])
+    if filters.get("converted") is not None:
+        query = query.where(Lead.converted == filters["converted"])
+    if filters.get("current_stage"):
+        query = query.where(Lead.current_stage == filters["current_stage"])
+    if filters.get("start_date"):
+        query = query.where(Lead.created_date >= filters["start_date"])
+    if filters.get("end_date"):
+        query = query.where(Lead.created_date <= filters["end_date"])
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
