@@ -1,5 +1,10 @@
+import os
 from dotenv import load_dotenv
-load_dotenv(dotenv_path="backend/.env")
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
