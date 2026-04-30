@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
@@ -16,44 +17,44 @@ from backend.services.analytics_service import (
 router = APIRouter()
 
 @router.get("/source")
-async def get_source_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_conversion_by_source(db)
+async def get_source_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_conversion_by_source(db, start_date, end_date)
 
 @router.get("/city")
-async def get_city_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_conversion_by_city(db)
+async def get_city_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_conversion_by_city(db, start_date, end_date)
 
 @router.get("/course")
-async def get_course_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_conversion_by_course(db)
+async def get_course_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_conversion_by_course(db, start_date, end_date)
 
 @router.get("/funnel")
-async def get_funnel_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_stage_funnel(db)
+async def get_funnel_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_stage_funnel(db, start_date, end_date)
 
 @router.get("/counselors")
-async def get_counselors_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_counselor_performance(db)
+async def get_counselors_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_counselor_performance(db, start_date, end_date)
 
 @router.get("/monthly")
-async def get_monthly_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_monthly_leads(db)
+async def get_monthly_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_monthly_leads(db, start_date, end_date)
 
 @router.get("/stuck-leads")
-async def get_stuck_leads_analytics(db: AsyncSession = Depends(get_db)):
-    return await get_stuck_leads(db)
+async def get_stuck_leads_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
+    return await get_stuck_leads(db, start_date, end_date)
 
 @router.get("/overview")
-async def get_overview_analytics(db: AsyncSession = Depends(get_db)):
+async def get_overview_analytics(db: AsyncSession = Depends(get_db), start_date: Optional[str] = None, end_date: Optional[str] = None):
     # Run all queries in parallel using asyncio.gather
     results = await asyncio.gather(
-        get_conversion_by_source(db),
-        get_conversion_by_city(db),
-        get_conversion_by_course(db),
-        get_stage_funnel(db),
-        get_counselor_performance(db),
-        get_monthly_leads(db),
-        get_stuck_leads(db)
+        get_conversion_by_source(db, start_date, end_date),
+        get_conversion_by_city(db, start_date, end_date),
+        get_conversion_by_course(db, start_date, end_date),
+        get_stage_funnel(db, start_date, end_date),
+        get_counselor_performance(db, start_date, end_date),
+        get_monthly_leads(db, start_date, end_date),
+        get_stuck_leads(db, start_date, end_date)
     )
     
     return {

@@ -1,14 +1,22 @@
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from backend.models import Lead
 
-async def get_conversion_by_source(db: AsyncSession):
+async def get_conversion_by_source(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = select(
         Lead.source,
         func.count().label('total_leads'),
         func.sum(Lead.converted).label('converted_leads'),
         (func.sum(Lead.converted) * 100.0 / func.count()).label('conversion_rate')
-    ).group_by(Lead.source).order_by((func.sum(Lead.converted) * 100.0 / func.count()).desc())
+    )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
+        
+    query = query.group_by(Lead.source).order_by((func.sum(Lead.converted) * 100.0 / func.count()).desc())
     
     result = await db.execute(query)
     rows = result.all()
@@ -22,13 +30,20 @@ async def get_conversion_by_source(db: AsyncSession):
         for row in rows
     ]
 
-async def get_conversion_by_city(db: AsyncSession):
+async def get_conversion_by_city(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = select(
         Lead.city,
         func.count().label('total_leads'),
         func.sum(Lead.converted).label('converted_leads'),
         (func.sum(Lead.converted) * 100.0 / func.count()).label('conversion_rate')
-    ).group_by(Lead.city).order_by(func.count().desc())
+    )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
+        
+    query = query.group_by(Lead.city).order_by(func.count().desc())
     
     result = await db.execute(query)
     rows = result.all()
@@ -42,13 +57,20 @@ async def get_conversion_by_city(db: AsyncSession):
         for row in rows
     ]
 
-async def get_conversion_by_course(db: AsyncSession):
+async def get_conversion_by_course(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = select(
         Lead.course_interest,
         func.count().label('total_leads'),
         func.sum(Lead.converted).label('converted_leads'),
         (func.sum(Lead.converted) * 100.0 / func.count()).label('conversion_rate')
-    ).group_by(Lead.course_interest).order_by(func.count().desc())
+    )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
+        
+    query = query.group_by(Lead.course_interest).order_by(func.count().desc())
     
     result = await db.execute(query)
     rows = result.all()
@@ -62,11 +84,18 @@ async def get_conversion_by_course(db: AsyncSession):
         for row in rows
     ]
 
-async def get_stage_funnel(db: AsyncSession):
+async def get_stage_funnel(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = select(
         Lead.current_stage,
         func.count().label('count')
-    ).group_by(Lead.current_stage)
+    )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
+        
+    query = query.group_by(Lead.current_stage)
     
     result = await db.execute(query)
     rows = result.all()
@@ -83,7 +112,7 @@ async def get_stage_funnel(db: AsyncSession):
         for stage in stages
     ]
 
-async def get_counselor_performance(db: AsyncSession):
+async def get_counselor_performance(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = select(
         Lead.counselor_id,
         func.count().label('total_leads'),
@@ -92,7 +121,14 @@ async def get_counselor_performance(db: AsyncSession):
         func.avg(Lead.form_completion_percentage).label('avg_form_completion'),
         func.avg(Lead.total_calls).label('avg_calls'),
         func.avg(Lead.total_whatsapp_messages).label('avg_whatsapp_messages')
-    ).group_by(Lead.counselor_id).order_by((func.sum(Lead.converted) * 100.0 / func.count()).desc())
+    )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
+        
+    query = query.group_by(Lead.counselor_id).order_by((func.sum(Lead.converted) * 100.0 / func.count()).desc())
     
     result = await db.execute(query)
     rows = result.all()
@@ -109,7 +145,7 @@ async def get_counselor_performance(db: AsyncSession):
         for row in rows
     ]
 
-async def get_monthly_leads(db: AsyncSession):
+async def get_monthly_leads(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     year_col = func.substr(Lead.created_date, 1, 4)
     month_col = func.substr(Lead.created_date, 6, 2)
     
@@ -119,7 +155,14 @@ async def get_monthly_leads(db: AsyncSession):
         func.count().label('total_leads'),
         func.sum(Lead.converted).label('converted_leads'),
         (func.sum(Lead.converted) * 100.0 / func.count()).label('conversion_rate')
-    ).group_by(year_col, month_col).order_by(year_col, month_col)
+    )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
+        
+    query = query.group_by(year_col, month_col).order_by(year_col, month_col)
     
     result = await db.execute(query)
     rows = result.all()
@@ -134,7 +177,7 @@ async def get_monthly_leads(db: AsyncSession):
         for row in rows
     ]
 
-async def get_stuck_leads(db: AsyncSession):
+async def get_stuck_leads(db: AsyncSession, start_date: Optional[str] = None, end_date: Optional[str] = None):
     query = select(Lead).where(
         and_(
             Lead.converted == 0,
@@ -144,6 +187,11 @@ async def get_stuck_leads(db: AsyncSession):
             )
         )
     )
+    
+    if start_date:
+        query = query.where(Lead.created_date >= start_date)
+    if end_date:
+        query = query.where(Lead.created_date <= end_date)
     
     result = await db.execute(query)
     leads = result.scalars().all()
