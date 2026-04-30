@@ -71,3 +71,23 @@ class PredictResponse(BaseModel):
 class BatchPredictResponse(BaseModel):
     message: str
     total_scored: int
+
+class LeadIntelligenceRead(BaseModel):
+    lead_id: str
+    source: str
+    course_interest: str
+    city: str
+    current_stage: str
+    conversion_probability: Optional[float] = None
+    counselor_id: str
+    days_since_last_interaction: int
+    form_completion_percentage: int
+    days_in_inquiry_stage: int
+    days_in_engagement_stage: int
+
+    class Config:
+        from_attributes = True
+
+class LeadIntelligenceResponse(BaseModel):
+    total: int
+    leads: List[LeadIntelligenceRead]

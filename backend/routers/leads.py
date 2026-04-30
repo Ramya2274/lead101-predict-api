@@ -8,8 +8,8 @@ from io import StringIO, BytesIO
 from sqlalchemy import delete, func, select
 
 from backend.database import get_db
-from backend.schemas import LeadListResponse, UploadResponse, LeadRead
-from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id, get_all_leads_filtered
+from backend.schemas import LeadListResponse, UploadResponse, LeadRead, LeadIntelligenceResponse
+from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id, get_all_leads_filtered, get_top_leads, get_at_risk_leads, get_stuck_leads_detail
 from backend.models import Lead
 
 router = APIRouter()
@@ -175,6 +175,21 @@ async def export_leads_excel(
             "Content-Disposition": "attachment; filename=leads_export.xlsx"
         }
     )
+
+@router.get("/top-leads", response_model=LeadIntelligenceResponse)
+async def get_top_leads_endpoint(limit: int = 20, db: AsyncSession = Depends(get_db)):
+    leads = await get_top_leads(db, limit)
+    return {"total": len(leads), "leads": leads}
+
+@router.get("/at-risk", response_model=LeadIntelligenceResponse)
+async def get_at_risk_leads_endpoint(limit: int = 20, days_inactive: int = 7, db: AsyncSession = Depends(get_db)):
+    leads = await get_at_risk_leads(db, limit, days_inactive)
+    return {"total": len(leads), "leads": leads}
+
+@router.get("/stuck", response_model=LeadIntelligenceResponse)
+async def get_stuck_leads_endpoint(limit: int = 50, db: AsyncSession = Depends(get_db)):
+    leads = await get_stuck_leads_detail(db, limit)
+    return {"total": len(leads), "leads": leads}
 
 @router.get("/{lead_id}", response_model=LeadRead)
 async def get_lead_by_id_endpoint(lead_id: str, db: AsyncSession = Depends(get_db)):

@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_, or_, desc
 import numpy as np
 
 from backend.models import Lead
@@ -101,6 +101,44 @@ async def get_all_leads_filtered(db: AsyncSession, filters: dict):
     if filters.get("end_date"):
         query = query.where(Lead.created_date <= filters["end_date"])
 
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_top_leads(db: AsyncSession, limit: int = 20):
+    query = select(Lead).where(
+        and_(
+            Lead.converted == 0,
+            Lead.conversion_probability.isnot(None)
+        )
+    ).order_by(desc(Lead.conversion_probability)).limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_at_risk_leads(db: AsyncSession, limit: int = 20, days_inactive: int = 7):
+    query = select(Lead).where(
+        and_(
+            Lead.converted == 0,
+            Lead.conversion_probability.isnot(None),
+            Lead.conversion_probability > 0.5,
+            Lead.days_since_last_interaction > days_inactive
+        )
+    ).order_by(desc(Lead.conversion_probability)).limit(limit)
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_stuck_leads_detail(db: AsyncSession, limit: int = 50):
+    query = select(Lead).where(
+        and_(
+            Lead.converted == 0,
+            or_(
+                Lead.days_in_inquiry_stage > 14,
+                Lead.days_in_engagement_stage > 14
+            )
+        )
+    ).order_by(desc(Lead.conversion_probability)).limit(limit)
+    
     result = await db.execute(query)
     return result.scalars().all()
 
