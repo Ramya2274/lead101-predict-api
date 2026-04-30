@@ -2,4 +2,4 @@ __pycache__/
 *.pyc
 .env
 backend/data/
-backend/ml/*.pkl
+backend/ml/__pycache__/
