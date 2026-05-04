@@ -32,17 +32,10 @@ class LeadRead(LeadBase):
     class Config:
         from_attributes = True
 
-class LeadListResponse(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    data: List[LeadRead]
-
 class UploadResponse(BaseModel):
     message: str
     total_inserted: int
     total_scored: int
-    skipped: int
 
 class PredictRequest(BaseModel):
     source: str = "Unknown"
@@ -69,61 +62,22 @@ class PredictResponse(BaseModel):
     confidence: str
     risk_factors: List[str]
 
-class BatchPredictResponse(BaseModel):
-    message: str
-    total_scored: int
-
-class LeadIntelligenceRead(BaseModel):
+class PredictResultRead(BaseModel):
     lead_id: str
     source: str
     course_interest: str
     city: str
     current_stage: str
-    conversion_probability: Optional[float] = None
     counselor_id: str
-    days_since_last_interaction: int
-    form_completion_percentage: int
-    days_in_inquiry_stage: int
-    days_in_engagement_stage: int
+    conversion_probability: Optional[float] = None
+    will_convert: bool
+    confidence: str
 
     class Config:
         from_attributes = True
 
-class LeadIntelligenceResponse(BaseModel):
+class PredictResultsResponse(BaseModel):
     total: int
-    leads: List[LeadIntelligenceRead]
-
-class FeatureImportance(BaseModel):
-    feature: str
-    importance: float
-
-class ModelInfoResponse(BaseModel):
-    model_version: str
-    algorithm: str
-    accuracy: float
-    roc_auc: float
-    precision: float
-    recall: float
-    f1_score: float
-    train_size: int
-    test_size: int
-    total_features: int
-    training_date: str
-    trained_on: str
-    confusion_matrix: List[List[int]]
-    top_10_features: List[FeatureImportance]
-    all_features: List[FeatureImportance]
-
-class ExplanationFactor(BaseModel):
-    factor: str
-    detail: str
-    impact: str
-
-class LeadExplanationResponse(BaseModel):
-    conversion_probability: float
-    will_convert: bool
-    confidence: str
-    positive_factors: List[ExplanationFactor]
-    negative_factors: List[ExplanationFactor]
-    recommendation: str
-    priority: str
+    page: int
+    page_size: int
+    data: List[PredictResultRead]

@@ -1,15 +1,12 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 import pandas as pd
 import io
-from io import StringIO, BytesIO
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete
 
 from backend.database import get_db
-from backend.schemas import LeadListResponse, UploadResponse, LeadRead, LeadIntelligenceResponse
-from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id, get_all_leads_filtered, get_top_leads, get_at_risk_leads, get_stuck_leads_detail
+from backend.schemas import UploadResponse
+from backend.services.lead_service import bulk_insert_leads
 from backend.services.predict_service import predict_batch
 from backend.models import Lead
 
@@ -21,17 +18,6 @@ async def upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(
         contents = await file.read()
         df = pd.read_csv(io.BytesIO(contents))
         df.columns = df.columns.str.strip()
-        
-        # Validate columns
-        required_columns = ['lead_id', 'created_date', 
-                           'source', 'course_interest', 'city']
-        missing = [c for c in required_columns 
-                  if c not in df.columns]
-        if missing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing columns: {missing}"
-            )
         
         # Delete all existing rows
         await db.execute(delete(Lead))
@@ -45,172 +31,7 @@ async def upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(
         return UploadResponse(
             message="Upload and scoring successful",
             total_inserted=total_inserted,
-            total_scored=total_scored,
-            skipped=0
+            total_scored=total_scored
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("", response_model=LeadListResponse)
-@router.get("/", response_model=LeadListResponse, include_in_schema=False)
-async def get_leads_endpoint(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1),
-    source: Optional[str] = None,
-    city: Optional[str] = None,
-    course_interest: Optional[str] = None,
-    converted: Optional[int] = None,
-    current_stage: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    filters = {
-        "source": source,
-        "city": city,
-        "course_interest": course_interest,
-        "converted": converted,
-        "current_stage": current_stage
-    }
-    
-    total, leads = await get_leads(db, page, page_size, filters)
-    
-    return LeadListResponse(
-        total=total,
-        page=page,
-        page_size=page_size,
-        data=leads
-    )
-
-@router.get("/stats/summary")
-async def get_stats_summary(db: AsyncSession = Depends(get_db)):
-    total_leads_query = select(func.count(Lead.lead_id))
-    total_leads = (await db.execute(total_leads_query)).scalar() or 0
-    
-    total_converted_query = select(func.count(Lead.lead_id)).where(Lead.converted == 1)
-    total_converted = (await db.execute(total_converted_query)).scalar() or 0
-    
-    conversion_rate = (total_converted / total_leads * 100) if total_leads > 0 else 0
-    
-    distinct_sources_query = select(func.count(func.distinct(Lead.source)))
-    distinct_sources = (await db.execute(distinct_sources_query)).scalar() or 0
-    
-    distinct_cities_query = select(func.count(func.distinct(Lead.city)))
-    distinct_cities = (await db.execute(distinct_cities_query)).scalar() or 0
-    
-    return {
-        "total_leads": total_leads,
-        "total_converted": total_converted,
-        "conversion_rate": conversion_rate,
-        "distinct_sources": distinct_sources,
-        "distinct_cities": distinct_cities
-    }
-
-@router.get("/export/csv")
-async def export_leads_csv(
-    source: Optional[str] = None,
-    city: Optional[str] = None,
-    course_interest: Optional[str] = None,
-    converted: Optional[int] = None,
-    current_stage: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    filters = {
-        "source": source,
-        "city": city,
-        "course_interest": course_interest,
-        "converted": converted,
-        "current_stage": current_stage,
-        "start_date": start_date,
-        "end_date": end_date
-    }
-    
-    leads = await get_all_leads_filtered(db, filters)
-    
-    # Convert leads to list of dicts for pandas
-    leads_data = []
-    for lead in leads:
-        lead_dict = lead.__dict__.copy()
-        if "_sa_instance_state" in lead_dict:
-            del lead_dict["_sa_instance_state"]
-        leads_data.append(lead_dict)
-        
-    df = pd.DataFrame(leads_data)
-    
-    output = StringIO()
-    df.to_csv(output, index=False)
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=leads_export.csv"
-        }
-    )
-
-@router.get("/export/excel")
-async def export_leads_excel(
-    source: Optional[str] = None,
-    city: Optional[str] = None,
-    course_interest: Optional[str] = None,
-    converted: Optional[int] = None,
-    current_stage: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    filters = {
-        "source": source,
-        "city": city,
-        "course_interest": course_interest,
-        "converted": converted,
-        "current_stage": current_stage,
-        "start_date": start_date,
-        "end_date": end_date
-    }
-    
-    leads = await get_all_leads_filtered(db, filters)
-    
-    leads_data = []
-    for lead in leads:
-        lead_dict = lead.__dict__.copy()
-        if "_sa_instance_state" in lead_dict:
-            del lead_dict["_sa_instance_state"]
-        leads_data.append(lead_dict)
-        
-    df = pd.DataFrame(leads_data)
-    
-    output = BytesIO()
-    df.to_excel(output, index=False, sheet_name="Leads")
-    output.seek(0)
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=leads_export.xlsx"
-        }
-    )
-
-@router.get("/top-leads", response_model=LeadIntelligenceResponse)
-async def get_top_leads_endpoint(limit: int = 20, db: AsyncSession = Depends(get_db)):
-    leads = await get_top_leads(db, limit)
-    return {"total": len(leads), "leads": leads}
-
-@router.get("/at-risk", response_model=LeadIntelligenceResponse)
-async def get_at_risk_leads_endpoint(limit: int = 20, days_inactive: int = 7, db: AsyncSession = Depends(get_db)):
-    leads = await get_at_risk_leads(db, limit, days_inactive)
-    return {"total": len(leads), "leads": leads}
-
-@router.get("/stuck", response_model=LeadIntelligenceResponse)
-async def get_stuck_leads_endpoint(limit: int = 50, db: AsyncSession = Depends(get_db)):
-    leads = await get_stuck_leads_detail(db, limit)
-    return {"total": len(leads), "leads": leads}
-
-@router.get("/{lead_id}", response_model=LeadRead)
-async def get_lead_by_id_endpoint(lead_id: str, db: AsyncSession = Depends(get_db)):
-    lead = await get_lead_by_id(db, lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    return lead

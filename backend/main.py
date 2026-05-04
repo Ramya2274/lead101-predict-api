@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
-from backend.routers import leads, analytics, predict
+from backend.routers import leads, predict
 import backend.models  # Ensure models are imported so Base metadata is populated
 
 @asynccontextmanager
@@ -35,11 +35,8 @@ app.add_middleware(
 )
 
 app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
-app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(predict.router, prefix="/api/predict", tags=["predict"])
 
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Lead101 Predict API is running"}
-
-
