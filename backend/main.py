@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
-from backend.routers import leads, predict
+from backend.routers import leads, forecast
 import backend.models  # Ensure models are imported so Base metadata is populated
 
 @asynccontextmanager
@@ -35,7 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
-app.include_router(predict.router, prefix="/api/predict", tags=["predict"])
+app.include_router(forecast.router, prefix="/api/forecast", tags=["forecast"])
 
 @app.get("/")
 async def root():

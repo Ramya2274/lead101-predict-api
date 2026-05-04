@@ -1,0 +1,26 @@
+[
+  {
+    "week": "2025-12-28",
+    "predicted": 14,
+    "lower_bound": 10,
+    "upper_bound": 18
+  },
+  {
+    "week": "2026-01-04",
+    "predicted": 16,
+    "lower_bound": 11,
+    "upper_bound": 20
+  },
+  {
+    "week": "2026-01-11",
+    "predicted": 17,
+    "lower_bound": 13,
+    "upper_bound": 21
+  },
+  {
+    "week": "2026-01-18",
+    "predicted": 16,
+    "lower_bound": 11,
+    "upper_bound": 20
+  }
+]
