@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from prophet import Prophet
 import joblib
 import json
 import pandas as pd
@@ -26,7 +25,7 @@ async def get_next_week_forecast():
         "lower_bound": next_week['lower_bound'],
         "upper_bound": next_week['upper_bound'],
         "confidence_range": f"{next_week['lower_bound']} - {next_week['upper_bound']}",
-        "model": "Facebook Prophet",
+        "model": metadata['model_type'],
         "mae": metadata['mae']
     }
 
@@ -38,7 +37,7 @@ async def get_next_4_weeks_forecast():
     return {
         "forecast": next_4_weeks_cache,
         "total_predicted": sum(w['predicted'] for w in next_4_weeks_cache),
-        "model": "Facebook Prophet",
+        "model": metadata['model_type'],
         "mae": metadata['mae'],
         "trained_on_weeks": metadata['total_weeks_trained']
     }
