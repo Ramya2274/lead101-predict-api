@@ -3,7 +3,10 @@ import numpy as np
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+from sklearn.metrics import (
+    accuracy_score, roc_auc_score, classification_report,
+    precision_score, recall_score, f1_score, confusion_matrix
+)
 from xgboost import XGBClassifier
 import os
 
@@ -124,6 +127,31 @@ def main():
         print(f"{i+1}. {feature_columns[indices[i]]}: {importances[indices[i]]:.4f}")
 
     # 8. Save artifacts
+    metrics = {
+        "accuracy": round(accuracy_score(y_test, y_pred), 4),
+        "roc_auc": round(roc_auc_score(y_test, y_pred_proba), 4),
+        "precision": round(precision_score(y_test, y_pred), 4),
+        "recall": round(recall_score(y_test, y_pred), 4),
+        "f1_score": round(f1_score(y_test, y_pred), 4),
+        "confusion_matrix": confusion_matrix(y_test, y_pred).tolist(),
+        "train_size": len(X_train),
+        "test_size": len(X_test),
+        "total_features": len(feature_columns),
+        "model_version": "1.0.0",
+        "trained_on": "lead101_realtime_5000.csv",
+        "algorithm": "XGBoost Classifier",
+        "training_date": str(pd.Timestamp.now().date())
+    }
+    joblib.dump(metrics, "backend/ml/model_metrics.pkl")
+
+    importance_df = pd.DataFrame({
+        "feature": feature_columns,
+        "importance": model.feature_importances_
+    }).sort_values("importance", ascending=False)
+    
+    feature_importance = importance_df.to_dict(orient="records")
+    joblib.dump(feature_importance, "backend/ml/feature_importance.pkl")
+
     joblib.dump(model, "backend/ml/model.pkl")
     joblib.dump(feature_columns, "backend/ml/features.pkl")
     print("\nModel and artifacts saved successfully in backend/ml/")

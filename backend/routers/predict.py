@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
-from backend.schemas import PredictRequest, PredictResponse, BatchPredictResponse
-from backend.services.predict_service import predict_single, predict_batch
+from backend.schemas import PredictRequest, PredictResponse, BatchPredictResponse, ModelInfoResponse
+from backend.services.predict_service import predict_single, predict_batch, get_model_info
 from backend.models import Lead
 from sqlalchemy import select
 
@@ -23,6 +23,27 @@ async def batch_predict_endpoint(db: AsyncSession = Depends(get_db)):
         message="Batch prediction successful",
         total_scored=total_scored
     )
+
+@router.get("/model/info", response_model=ModelInfoResponse)
+async def get_model_info_endpoint():
+    info = get_model_info()
+    return {
+        "model_version": info["model_metrics"]["model_version"],
+        "algorithm": info["model_metrics"]["algorithm"],
+        "accuracy": info["model_metrics"]["accuracy"],
+        "roc_auc": info["model_metrics"]["roc_auc"],
+        "precision": info["model_metrics"]["precision"],
+        "recall": info["model_metrics"]["recall"],
+        "f1_score": info["model_metrics"]["f1_score"],
+        "train_size": info["model_metrics"]["train_size"],
+        "test_size": info["model_metrics"]["test_size"],
+        "total_features": info["model_metrics"]["total_features"],
+        "training_date": info["model_metrics"]["training_date"],
+        "trained_on": info["model_metrics"]["trained_on"],
+        "confusion_matrix": info["model_metrics"]["confusion_matrix"],
+        "top_10_features": info["top_10_features"],
+        "all_features": info["feature_importance"]
+    }
 
 @router.get("/{lead_id}", response_model=PredictResponse, dependencies=[Depends(get_api_key)])
 async def predict_lead_by_id(lead_id: str, db: AsyncSession = Depends(get_db)):

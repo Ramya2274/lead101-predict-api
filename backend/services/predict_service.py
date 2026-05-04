@@ -15,8 +15,12 @@ try:
     encoder_stage = joblib.load("backend/ml/encoder_stage.pkl")
     encoder_counselor = joblib.load("backend/ml/encoder_counselor.pkl")
     response_time_median = joblib.load("backend/ml/response_time_median.pkl")
+    model_metrics = joblib.load("backend/ml/model_metrics.pkl")
+    feature_importance = joblib.load("backend/ml/feature_importance.pkl")
 except FileNotFoundError:
     print("WARNING: ML artifacts not found. Run train.py first.")
+    model_metrics = {}
+    feature_importance = []
 
 def prepare_features(data: dict) -> pd.DataFrame:
     # Pre-clean the dict: replace None for response_time_hours with median
@@ -200,3 +204,10 @@ async def predict_batch(db: AsyncSession) -> int:
     await db.commit()
     
     return len(leads)
+
+def get_model_info() -> dict:
+    return {
+        "model_metrics": model_metrics,
+        "feature_importance": feature_importance,
+        "top_10_features": feature_importance[:10]
+    }

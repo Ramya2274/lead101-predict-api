@@ -91,3 +91,24 @@ class LeadIntelligenceRead(BaseModel):
 class LeadIntelligenceResponse(BaseModel):
     total: int
     leads: List[LeadIntelligenceRead]
+
+class FeatureImportance(BaseModel):
+    feature: str
+    importance: float
+
+class ModelInfoResponse(BaseModel):
+    model_version: str
+    algorithm: str
+    accuracy: float
+    roc_auc: float
+    precision: float
+    recall: float
+    f1_score: float
+    train_size: int
+    test_size: int
+    total_features: int
+    training_date: str
+    trained_on: str
+    confusion_matrix: List[List[int]]
+    top_10_features: List[FeatureImportance]
+    all_features: List[FeatureImportance]
