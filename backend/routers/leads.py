@@ -12,11 +12,10 @@ from backend.schemas import LeadListResponse, UploadResponse, LeadRead, LeadInte
 from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id, get_all_leads_filtered, get_top_leads, get_at_risk_leads, get_stuck_leads_detail
 from backend.services.predict_service import predict_batch
 from backend.models import Lead
-from backend.auth import get_api_key
 
 router = APIRouter()
 
-@router.post("/upload", response_model=UploadResponse, dependencies=[Depends(get_api_key)])
+@router.post("/upload", response_model=UploadResponse)
 async def upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     try:
         contents = await file.read()
@@ -52,8 +51,8 @@ async def upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("", response_model=LeadListResponse, dependencies=[Depends(get_api_key)])
-@router.get("/", response_model=LeadListResponse, include_in_schema=False, dependencies=[Depends(get_api_key)])
+@router.get("", response_model=LeadListResponse)
+@router.get("/", response_model=LeadListResponse, include_in_schema=False)
 async def get_leads_endpoint(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1),
@@ -81,7 +80,7 @@ async def get_leads_endpoint(
         data=leads
     )
 
-@router.get("/stats/summary", dependencies=[Depends(get_api_key)])
+@router.get("/stats/summary")
 async def get_stats_summary(db: AsyncSession = Depends(get_db)):
     total_leads_query = select(func.count(Lead.lead_id))
     total_leads = (await db.execute(total_leads_query)).scalar() or 0
@@ -105,7 +104,7 @@ async def get_stats_summary(db: AsyncSession = Depends(get_db)):
         "distinct_cities": distinct_cities
     }
 
-@router.get("/export/csv", dependencies=[Depends(get_api_key)])
+@router.get("/export/csv")
 async def export_leads_csv(
     source: Optional[str] = None,
     city: Optional[str] = None,
@@ -150,7 +149,7 @@ async def export_leads_csv(
         }
     )
 
-@router.get("/export/excel", dependencies=[Depends(get_api_key)])
+@router.get("/export/excel")
 async def export_leads_excel(
     source: Optional[str] = None,
     city: Optional[str] = None,
@@ -194,22 +193,22 @@ async def export_leads_excel(
         }
     )
 
-@router.get("/top-leads", response_model=LeadIntelligenceResponse, dependencies=[Depends(get_api_key)])
+@router.get("/top-leads", response_model=LeadIntelligenceResponse)
 async def get_top_leads_endpoint(limit: int = 20, db: AsyncSession = Depends(get_db)):
     leads = await get_top_leads(db, limit)
     return {"total": len(leads), "leads": leads}
 
-@router.get("/at-risk", response_model=LeadIntelligenceResponse, dependencies=[Depends(get_api_key)])
+@router.get("/at-risk", response_model=LeadIntelligenceResponse)
 async def get_at_risk_leads_endpoint(limit: int = 20, days_inactive: int = 7, db: AsyncSession = Depends(get_db)):
     leads = await get_at_risk_leads(db, limit, days_inactive)
     return {"total": len(leads), "leads": leads}
 
-@router.get("/stuck", response_model=LeadIntelligenceResponse, dependencies=[Depends(get_api_key)])
+@router.get("/stuck", response_model=LeadIntelligenceResponse)
 async def get_stuck_leads_endpoint(limit: int = 50, db: AsyncSession = Depends(get_db)):
     leads = await get_stuck_leads_detail(db, limit)
     return {"total": len(leads), "leads": leads}
 
-@router.get("/{lead_id}", response_model=LeadRead, dependencies=[Depends(get_api_key)])
+@router.get("/{lead_id}", response_model=LeadRead)
 async def get_lead_by_id_endpoint(lead_id: str, db: AsyncSession = Depends(get_db)):
     lead = await get_lead_by_id(db, lead_id)
     if not lead:
