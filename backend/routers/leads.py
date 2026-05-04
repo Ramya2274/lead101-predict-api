@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 from backend.database import get_db
 from backend.schemas import LeadListResponse, UploadResponse, LeadRead, LeadIntelligenceResponse
 from backend.services.lead_service import bulk_insert_leads, get_leads, get_lead_by_id, get_all_leads_filtered, get_top_leads, get_at_risk_leads, get_stuck_leads_detail
+from backend.services.predict_service import predict_batch
 from backend.models import Lead
 from backend.auth import get_api_key
 
@@ -20,6 +21,18 @@ async def upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(
     try:
         contents = await file.read()
         df = pd.read_csv(io.BytesIO(contents))
+        df.columns = df.columns.str.strip()
+        
+        # Validate columns
+        required_columns = ['lead_id', 'created_date', 
+                           'source', 'course_interest', 'city']
+        missing = [c for c in required_columns 
+                  if c not in df.columns]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing columns: {missing}"
+            )
         
         # Delete all existing rows
         await db.execute(delete(Lead))
@@ -27,9 +40,13 @@ async def upload_leads(file: UploadFile = File(...), db: AsyncSession = Depends(
         
         total_inserted = await bulk_insert_leads(df, db)
         
+        # AUTO score all leads immediately
+        total_scored = await predict_batch(db)
+        
         return UploadResponse(
-            message="Upload successful",
+            message="Upload and scoring successful",
             total_inserted=total_inserted,
+            total_scored=total_scored,
             skipped=0
         )
     except Exception as e:

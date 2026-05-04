@@ -41,6 +41,7 @@ class LeadListResponse(BaseModel):
 class UploadResponse(BaseModel):
     message: str
     total_inserted: int
+    total_scored: int
     skipped: int
 
 class PredictRequest(BaseModel):
