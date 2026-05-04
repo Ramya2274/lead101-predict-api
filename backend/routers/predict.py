@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
-from backend.schemas import PredictRequest, PredictResponse, BatchPredictResponse, ModelInfoResponse
-from backend.services.predict_service import predict_single, predict_batch, get_model_info
+from backend.schemas import PredictRequest, PredictResponse, BatchPredictResponse, ModelInfoResponse, LeadExplanationResponse
+from backend.services.predict_service import predict_single, predict_batch, get_model_info, get_lead_explanation
 from backend.models import Lead
 from sqlalchemy import select
 
@@ -63,3 +63,23 @@ async def predict_lead_by_id(lead_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     
     return prediction
+
+@router.post("/explain", response_model=LeadExplanationResponse, dependencies=[Depends(get_api_key)])
+async def explain_prediction(request: PredictRequest):
+    result = get_lead_explanation(request.model_dump())
+    return result
+
+@router.get("/explain/{lead_id}", response_model=LeadExplanationResponse, dependencies=[Depends(get_api_key)])
+async def explain_lead_by_id(lead_id: str, db: AsyncSession = Depends(get_db)):
+    query = select(Lead).where(Lead.lead_id == lead_id)
+    result = await db.execute(query)
+    lead = result.scalars().first()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
+    lead_dict = {c.name: getattr(lead, c.name) for c in Lead.__table__.columns}
+    
+    explanation = get_lead_explanation(lead_dict)
+    
+    return explanation

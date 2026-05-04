@@ -113,3 +113,17 @@ class ModelInfoResponse(BaseModel):
     confusion_matrix: List[List[int]]
     top_10_features: List[FeatureImportance]
     all_features: List[FeatureImportance]
+
+class ExplanationFactor(BaseModel):
+    factor: str
+    detail: str
+    impact: str
+
+class LeadExplanationResponse(BaseModel):
+    conversion_probability: float
+    will_convert: bool
+    confidence: str
+    positive_factors: List[ExplanationFactor]
+    negative_factors: List[ExplanationFactor]
+    recommendation: str
+    priority: str

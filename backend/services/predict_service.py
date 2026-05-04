@@ -211,3 +211,103 @@ def get_model_info() -> dict:
         "feature_importance": feature_importance,
         "top_10_features": feature_importance[:10]
     }
+
+def get_lead_explanation(lead_data: dict):
+    # Prepare features
+    df = prepare_features(lead_data)
+    prob = model.predict_proba(df)[0][1]
+    
+    # Get top feature contributions
+    feature_values = df.iloc[0].to_dict()
+    
+    # Build positive factors (boosting conversion)
+    positive_factors = []
+    
+    if feature_values.get('is_fast_response') == 1:
+        positive_factors.append({
+            "factor": "Fast Response",
+            "detail": "Lead responded within 2 hours",
+            "impact": "high"
+        })
+    if feature_values.get('is_high_form') == 1:
+        positive_factors.append({
+            "factor": "High Form Completion",
+            "detail": "Form completion above 70%",
+            "impact": "high"
+        })
+    if feature_values.get('whatsapp_replied') == 1:
+        positive_factors.append({
+            "factor": "WhatsApp Engagement",
+            "detail": "Lead replied on WhatsApp",
+            "impact": "medium"
+        })
+    if feature_values.get('engagement_score', 0) > 5:
+        positive_factors.append({
+            "factor": "High Engagement",
+            "detail": "Strong interaction across calls, WhatsApp and emails",
+            "impact": "high"
+        })
+    if lead_data.get('total_calls', 0) > 5:
+        positive_factors.append({
+            "factor": "Multiple Calls",
+            "detail": f"{lead_data.get('total_calls')} calls recorded",
+            "impact": "medium"
+        })
+
+    # Build negative factors (hurting conversion)
+    negative_factors = []
+    
+    if feature_values.get('is_stuck') == 1:
+        negative_factors.append({
+            "factor": "Stuck in Stage",
+            "detail": "Lead stuck in inquiry or engagement > 14 days",
+            "impact": "critical"
+        })
+    if lead_data.get('response_time_hours') is None or pd.isna(lead_data.get('response_time_hours')):
+        negative_factors.append({
+            "factor": "No Response",
+            "detail": "Lead has not responded at all",
+            "impact": "high"
+        })
+    if lead_data.get('form_completion_percentage', 0) < 30:
+        negative_factors.append({
+            "factor": "Low Form Completion",
+            "detail": f"Only {lead_data.get('form_completion_percentage')}% form filled",
+            "impact": "high"
+        })
+    if lead_data.get('total_calls', 0) == 0 and \
+       lead_data.get('total_whatsapp_messages', 0) == 0:
+        negative_factors.append({
+            "factor": "Zero Engagement",
+            "detail": "No calls or WhatsApp interaction recorded",
+            "impact": "critical"
+        })
+    if lead_data.get('days_since_last_interaction', 0) > 14:
+        negative_factors.append({
+            "factor": "Inactive Lead",
+            "detail": f"No interaction in last {lead_data.get('days_since_last_interaction')} days",
+            "impact": "high"
+        })
+
+    # Build recommendation
+    if prob >= 0.75:
+        recommendation = "High priority lead. Assign senior counselor and follow up immediately."
+    elif prob >= 0.5:
+        recommendation = "Medium priority. Schedule a call within 24 hours."
+    elif prob >= 0.25:
+        recommendation = "Low priority. Send WhatsApp message and monitor engagement."
+    else:
+        recommendation = "Very low probability. Consider re-engagement campaign or drop."
+
+    return {
+        "conversion_probability": round(float(prob), 4),
+        "will_convert": bool(prob >= 0.5),
+        "confidence": "high" if prob > 0.75 else 
+                     "medium" if prob > 0.5 else "low",
+        "positive_factors": positive_factors,
+        "negative_factors": negative_factors,
+        "recommendation": recommendation,
+        "priority": "P1" if prob >= 0.75 else
+                   "P2" if prob >= 0.5 else
+                   "P3" if prob >= 0.25 else "P4"
+    }
